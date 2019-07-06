@@ -20,7 +20,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_LCTL, KC_LALT, KC_LGUI,                   KC_SPC,                             KC_RGUI, KC_RALT, KC_RCTL, MO(1),              KC_LEFT, KC_DOWN, KC_RGHT \
     ),
     [1] = LAYOUT(
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            KC_MUTE, _______, _______, \
+        KC_POWER, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,           KC_MUTE, _______, _______, \
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,   KC_MPLY, KC_MSTP, KC_VOLU, \
         _______, RGB_SPD, RGB_VAI, RGB_SPI, RGB_HUI, RGB_SAI, _______, U_T_AUTO,U_T_AGCR,_______, _______, _______, _______, _______,   KC_MPRV, KC_MNXT, KC_VOLD, \
         _______, RGB_RMOD,RGB_VAD, RGB_MOD, RGB_HUD, RGB_SAD, _______, _______, _______, _______, _______, _______, _______, \
@@ -53,6 +53,7 @@ void matrix_scan_user(void) {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint32_t key_timer;
+    static bool rgb_matrix_disabled_on_sleep;
 
     switch (keycode) {
         case U_T_AUTO:
@@ -120,7 +121,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
               }
             }
             return false;
+        case KC_POWER:
+            // Disable RGB when mac is put to sleep via keyboard shortcut
+            if (record->event.pressed) {
+                key_timer = timer_read32();
+            } else {
+                if (timer_elapsed32(key_timer) >= 500) {
+                    rgb_matrix_set_flags(LED_FLAG_NONE);
+                    rgb_matrix_disable_noeeprom();
+                    rgb_matrix_disabled_on_sleep = true;
+                }
+            }
         default:
+            // Enable RGB when mac is woken up after previously being put to sleep via keyboard shortcut
+             if (record->event.pressed) {
+                 if (rgb_matrix_disabled_on_sleep) {
+                    rgb_matrix_set_flags(LED_FLAG_ALL);
+                    rgb_matrix_enable_noeeprom();
+                    rgb_matrix_disabled_on_sleep = false;
+                 }
+             }
+
             return true; //Process all other keycodes normally
     }
 }
