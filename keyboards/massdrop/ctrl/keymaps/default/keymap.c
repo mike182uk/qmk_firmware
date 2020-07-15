@@ -10,6 +10,27 @@ enum ctrl_keycodes {
     MD_BOOT,               //Restart into bootloader after hold timeout
 };
 
+<<<<<<< HEAD
+=======
+enum ctrl_rgb_mode {
+    RGB_MODE_ALL,
+    RGB_MODE_KEYLIGHT_AND_MODIFIER,
+    RGB_MODE_UNDERGLOW,
+    RGB_MODE_NONE,
+};
+
+typedef union {
+    uint32_t raw;
+    struct {
+        uint8_t rgb_mode :8;
+    };
+} ctrl_config_t;
+
+ctrl_config_t ctrl_config;
+
+keymap_config_t keymap_config;
+
+>>>>>>> 98df4a7b99 (persist rgb changes in nvm)
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [0] = LAYOUT(
         KC_ESC,  KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,             KC_PSCR, KC_SLCK, KC_PAUS, \
@@ -46,6 +67,30 @@ void matrix_init_user(void) {
 // Runs constantly in the background, in a loop.
 void matrix_scan_user(void) {
 };
+
+// Keyboard post initialization
+void keyboard_post_init_user(void) {
+    // Set pre-configured RGB mode
+    ctrl_config.raw = eeconfig_read_user();
+    switch (ctrl_config.rgb_mode) {
+        case RGB_MODE_ALL:
+            rgb_matrix_set_flags(LED_FLAG_ALL);
+            rgb_matrix_enable_noeeprom();
+            break;
+        case RGB_MODE_KEYLIGHT_AND_MODIFIER:
+            rgb_matrix_set_flags(LED_FLAG_KEYLIGHT | LED_FLAG_MODIFIER);
+            rgb_matrix_set_color_all(0, 0, 0);
+            break;
+        case RGB_MODE_UNDERGLOW:
+            rgb_matrix_set_flags(LED_FLAG_UNDERGLOW);
+            rgb_matrix_set_color_all(0, 0, 0);
+            break;
+        case RGB_MODE_NONE:
+            rgb_matrix_set_flags(LED_FLAG_NONE);
+            rgb_matrix_disable_noeeprom();
+            break;
+    }
+}
 
 #define MODS_SHIFT  (get_mods() & MOD_MASK_SHIFT)
 #define MODS_CTRL   (get_mods() & MOD_MASK_CTRL)
@@ -97,6 +142,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case RGB_TOG:
             if (record->event.pressed) {
+<<<<<<< HEAD
               switch (rgb_matrix_get_flags()) {
                 case LED_FLAG_ALL: {
                     rgb_matrix_set_flags(LED_FLAG_KEYLIGHT | LED_FLAG_MODIFIER | LED_FLAG_INDICATOR);
@@ -119,6 +165,35 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                   }
                   break;
               }
+=======
+                switch (rgb_matrix_get_flags()) {
+                    case LED_FLAG_ALL: {
+                        ctrl_config.rgb_mode = RGB_MODE_KEYLIGHT_AND_MODIFIER;
+                        rgb_matrix_set_flags(LED_FLAG_KEYLIGHT | LED_FLAG_MODIFIER);
+                        rgb_matrix_set_color_all(0, 0, 0);
+                        break;
+                    }
+                    case LED_FLAG_KEYLIGHT | LED_FLAG_MODIFIER: {
+                        ctrl_config.rgb_mode = RGB_MODE_UNDERGLOW;
+                        rgb_matrix_set_flags(LED_FLAG_UNDERGLOW);
+                        rgb_matrix_set_color_all(0, 0, 0);
+                        break;
+                    }
+                    case LED_FLAG_UNDERGLOW: {
+                        ctrl_config.rgb_mode = RGB_MODE_NONE;
+                        rgb_matrix_set_flags(LED_FLAG_NONE);
+                        rgb_matrix_disable_noeeprom();
+                        break;
+                    }
+                    default: {
+                        ctrl_config.rgb_mode = RGB_MODE_ALL;
+                        rgb_matrix_set_flags(LED_FLAG_ALL);
+                        rgb_matrix_enable_noeeprom();
+                        break;
+                    }
+                }
+                eeconfig_update_user(ctrl_config.raw);
+>>>>>>> persist rgb changes in nvm
             }
             return false;
         case KC_POWER:
